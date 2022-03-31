@@ -7,8 +7,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainActivityViewModel @Inject constructor() : ViewModel() {
-    // TODO : Example
     fun test() {
-        Timber.d("TODO : remove sample dagger setup $this")
+        Timber.d("Hello world")
     }
 }
