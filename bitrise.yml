@@ -1,0 +1,207 @@
+---
+format_version: 1.3.1
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+trigger_map:
+  - push_branch: master
+    workflow: Master
+  - push_branch: template
+    workflow: Primary
+  - pull_request_source_branch: "*"
+    pull_request_target_branch: master
+    workflow: PR
+workflows:
+  BintrayDeploy:
+    steps:
+      - activate-ssh-key@4.1:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+      - git-clone@6.1: {}
+      - gradle-runner@2.0:
+          title: Assemble
+          inputs:
+            - gradle_task: "$GRADLE_TASK"
+            - gradle_options: "--stacktrace --daemon --parallel --profile"
+      - gradle-unit-test@1.0:
+          title: Unit Test
+          inputs:
+            - unit_test_task: "$GRADLE_TEST_TASK"
+            - unit_test_flags: "--continue --no-rebuild --stacktrace --daemon --parallel
+            --profile"
+      - script@1.1:
+          title: DexCount report deploy
+          inputs:
+            - content: |-
+                #!/bin/bash
+
+                mkdir ./app/build/outputs/dexcount
+                tar -cvzf $BITRISE_DEPLOY_DIR/dexcount.tar.gz ./app/build/outputs/dexcount/
+            - is_debug: 'yes'
+      - gradle-runner@2.0:
+          title: Bintray Deploy
+          is_skippable: true
+          inputs:
+            - gradle_task: "$GRADLE_UPLOAD_TO_BINTRAY_TASK"
+            - gradle_options: "--stacktrace --daemon --parallel --profile"
+      - deploy-to-bitrise-io@2.0:
+          inputs:
+            - notify_user_groups: none
+    before_run:
+    after_run:
+  General:
+    steps:
+      - activate-ssh-key@4.1:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+      - git-clone@6.1: {}
+      - gradle-runner@2.0:
+          title: Assemble
+          inputs:
+            - gradle_task: "$GRADLE_TASK"
+            - gradle_options: "--stacktrace --daemon --parallel --profile"
+    before_run:
+    after_run:
+  Master:
+    steps:
+      - activate-ssh-key@4.1:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+      - git-clone@6.1: {}
+      - gradle-unit-test@1:
+          title: Unit Test
+          inputs:
+            - unit_test_task: "$GRADLE_TEST_TASK"
+      - gradle-runner@2.0:
+          title: Assemble
+          inputs:
+            - gradle_task: "$GRADLE_TASK"
+            - gradle_options: "--stacktrace --daemon --parallel --profile"
+      - script@1:
+          title: DexCount report deploy
+          inputs:
+            - content: |-
+                #!/bin/bash
+
+                mkdir ./app/build/outputs/dexcount
+                tar -cvzf $BITRISE_DEPLOY_DIR/dexcount.tar.gz ./app/build/outputs/dexcount/
+            - is_debug: 'yes'
+      - deploy-to-bitrise-io@2.0:
+          inputs:
+            - notify_user_groups: none
+    before_run:
+    after_run:
+  PR:
+    steps:
+      - activate-ssh-key@4.1:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+      - git-clone@6.1: {}
+      - gradle-unit-test@1:
+          title: Unit Test
+          inputs:
+            - unit_test_task: "$GRADLE_TEST_TASK"
+      - gradle-runner@2:
+          inputs:
+            - gradle_task: "$JACOCO_REPORT_TASK"
+      - android-lint@0:
+          inputs:
+            - variant: mockDebug
+            - report_path_pattern: app/build/reports/lint/lint-result.xml
+      - gradle-runner@2:
+          title: Generate detekt multimodule report
+          inputs:
+            - gradle_task: detektAll
+      - gradle-runner@2:
+          title: Assemble
+          inputs:
+            - gradle_task: "$GRADLE_TASK"
+            - gradle_options: "--stacktrace --daemon --parallel --profile"
+      - git::https://github.com/netguru/bitrise-step-danger-android.git@1.0:
+          title: Run Danger checks
+          is_always_run: true
+          inputs:
+            - JACOCO_REPORT_PATH: build/reports/jacoco/jacocoTestReport.xml
+            - LINT_REPORT_PATH: app/build/reports/lint-results-mockDebug.xml
+      - script@1:
+          title: DexCount report deploy
+          inputs:
+            - content: |-
+                #!/bin/bash
+
+                mkdir ./app/build/outputs/dexcount
+                tar -cvzf $BITRISE_DEPLOY_DIR/dexcount.tar.gz ./app/build/outputs/dexcount/
+            - is_debug: 'yes'
+      - deploy-to-bitrise-io@2.0:
+          inputs:
+            - is_enable_public_page: 'false'
+            - notify_user_groups: none
+    before_run:
+    after_run:
+  Primary:
+    steps:
+      - activate-ssh-key@4.1:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+      - git-clone@6.1: {}
+      - gradle-unit-test@1:
+          inputs:
+            - unit_test_task: "$GRADLE_TEST_TASK"
+            - unit_test_flags: "--continue --no-rebuild --stacktrace --daemon --parallel
+            --profile"
+      - gradle-runner@2.0:
+          inputs:
+            - gradle_task: "$JACOCO_REPORT_TASK"
+          title: Jacoco reports
+      - gradle-runner@2.0:
+          title: Assemble
+          inputs:
+            - gradle_task: "$GRADLE_TASK"
+            - gradle_options: "--stacktrace --daemon --parallel --profile"
+      - script@1.1:
+          title: DexCount report deploy
+          inputs:
+            - content: |-
+                #!/bin/bash
+
+                mkdir ./app/build/outputs/dexcount
+                tar -cvzf $BITRISE_DEPLOY_DIR/dexcount.tar.gz ./app/build/outputs/dexcount/
+            - is_debug: 'yes'
+      - deploy-to-bitrise-io@2.0:
+          inputs:
+            - notify_user_groups: none
+      - google-play-deploy@3.7: {}
+    before_run:
+    after_run:
+app:
+  envs:
+    - opts:
+        is_expand: true
+      BINTRAY_USER: netguru
+    - opts:
+        is_expand: false
+      GRADLEW_PATH: "./gradlew"
+    - opts:
+        is_expand: false
+      GRADLE_TASK: assemble
+    - opts:
+        is_expand: false
+      GRADLE_SONARQUBE_TASK: lintMockDebug sonarqubeMockDebug
+    - opts:
+        is_expand: false
+      GRADLE_OLD_TEST_TASK: jacocoTestMockDebugUnitTestReport
+    - opts:
+        is_expand: true
+      GRADLE_TEST_TASK: testMockDebugUnitTest
+    - opts:
+        is_expand: true
+      GRADLE_INSTRUMENTATION_TEST_TASK: createMockDebugCoverageReport
+    - opts:
+        is_expand: false
+      GRADLE_UPLOAD_TO_BINTRAY_TASK: bintrayUpload
+    - opts:
+        is_expand: false
+      FRANCIS_PROJECT_ID: 15809A44-61B7-469A-8F98-95DA3A53E0FB
+    - opts:
+        is_expand: false
+      FRANCIS_BASE_URL: https://francis.calluna.devguru.co/api/danger/result
+    - opts:
+        is_expand: false
+      JACOCO_REPORT_TASK: mergeJacocoTestReport
+meta:
+  bitrise.io:
+    machine_type: elite
+    stack: linux-docker-android-20.04

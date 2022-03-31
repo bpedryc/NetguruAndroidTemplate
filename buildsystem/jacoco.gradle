@@ -1,0 +1,56 @@
+apply plugin: 'jacoco'
+
+project.afterEvaluate {
+
+    tasks.create(name: "mergeJacocoTestReport", type: JacocoReport, dependsOn: []) {
+        group = "Reporting"
+        description = "Generate merged Jacoco coverage report, should be ran after unit tests task"
+
+        reports {
+            html.enabled(true)
+            xml.enabled(true)
+            xml.outputLocation = file("${buildDir}/reports/jacoco/jacocoTestReport.xml")
+            html.outputLocation = file("${buildDir}/reports/jacoco/html")
+        }
+
+        def classExcludes = ['android/databinding/**/*.class',
+                             '**/android/databinding/*Binding.class',
+                             '**/BR.*',
+                             '**/R.class',
+                             '**/R$*.class',
+                             '**/BuildConfig.*',
+                             '*_ViewBinding*.*',
+                             '**/Manifest*.*',
+                             '**/*$ViewInjector*.*',
+                             '**/*$ViewBinder*.*',
+                             '**/*_MembersInjector.class',
+                             '**/*_HiltModules*.*',
+                             '**/*Hilt_*.*',
+                             '**/hilt_aggregated_deps',
+                             '**/*_Factory*.*',
+                             '**/*_App*.*',
+                             '**/*Module_*Factory.class',
+                             '**/AutoValue_*.*',
+                             '**/*JavascriptBridge.class',
+                             '**/Lambda$*.class',
+                             '**/Lambda.class',
+                             '**/*Lambda.class',
+                             '**/*Lambda*.class']
+
+        sourceDirectories.setFrom(
+                fileTree("${project.projectDir}/src/main")
+        )
+        classDirectories.setFrom(
+                fileTree(project.projectDir) {
+                    include('**/build/intermediates/javac/**/*/classes/**')
+                    include('**/build/tmp/kotlin-classes/**/**')
+                    exclude('**/build/tmp/kotlin-classes/*UnitTest/**')
+                    exclude(classExcludes)
+                }
+        )
+        executionData.setFrom(fileTree("$projectDir") {
+            include("**/build/outputs/code_coverage/**/connected/*.ec")
+            include("**/build/jacoco/*.exec")
+        })
+    }
+}

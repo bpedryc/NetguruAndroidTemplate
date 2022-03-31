@@ -1,0 +1,178 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'com.getkeepsafe.dexcount'
+    id 'jacoco'
+    id 'dagger.hilt.android.plugin'
+}
+
+ext {
+
+    secrets = [
+            // define your app secrets, for example:
+            // hockeyAppId: keyProperty("HOCKEY_APP_ID")
+    ]
+}
+
+android {
+    compileSdkVersion 31
+
+    defaultConfig {
+        applicationId "com.haxos.nat"
+        minSdkVersion 21
+        targetSdkVersion 31
+        versionCode isBitrise ? Integer.parseInt(bitrise.io.buildNumber) : 1
+        versionName '0.1.0'
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        debug {
+            versionNameSuffix "-DEBUG"
+            applicationIdSuffix ".debug"
+            testCoverageEnabled false
+            debuggable true
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                    'proguard-rules.pro',
+                    'proguard-rules-test.pro'
+        }
+        release {
+            debuggable false
+            testCoverageEnabled false
+            minifyEnabled true
+            shrinkResources true
+            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+        }
+    }
+
+    flavorDimensions "api"
+
+    productFlavors {
+        mock {
+            versionNameSuffix "-MOCK"
+            applicationIdSuffix ".mock"
+            dimension "api"
+
+            // put your secrets in the BuildConfig.java class, for example:
+            // buildConfigField 'String', 'HOCKEY_APP_ID', "\"${secrets.hockeyAppId}\""
+        }
+        production {
+            dimension "api"
+            // inherit
+        }
+    }
+
+    variantFilter { variant ->
+        def buildName = variant.buildType.name
+        def flavorName = variant.getFlavors().get(0).name
+        // remove unnecessary variants
+        ['release'].each {
+            if (buildName == it) {
+                ['mock'].each {
+                    if (flavorName == it) {
+                        variant.setIgnore(true)
+                    }
+                }
+            }
+        }
+    }
+
+    // Always show the result of every unit test, even if it passes.
+    testOptions.unitTests.all {
+        testLogging {
+            events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
+        }
+    }
+
+    packagingOptions {
+        exclude 'META-INF/services/javax.annotation.processing.Processor'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+    }
+
+    sourceSets.all {
+        it.java.srcDir "src/$it.name/kotlin"
+    }
+
+    lintOptions {
+        abortOnError false
+        xmlReport true
+        checkDependencies true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
+    }
+
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+dependencies {
+
+    //Kotlin
+    implementation kotlinCore
+
+    // Anko Commons
+    implementation ankoCommons
+
+    // Support
+    implementation support
+    implementation fragment
+
+    // ViewModels LiveData
+    implementation lifecycle.libs
+    kapt lifecycle.proc
+
+    // Room
+    implementation room.libs
+    kapt room.proc
+    testImplementation room.test
+
+    // Dagger (Hilt)
+    implementation dagger.hiltAndroid
+    kapt dagger.hiltAndroidCompiler
+    androidTestImplementation dagger.hiltAndroidTest
+    kaptAndroidTest dagger.hiltAndroidCompiler
+
+    // Coroutines
+    implementation coroutines.libs
+    testImplementation coroutines.test
+
+    // ViewModel
+    implementation viewmodel
+
+    // OkHttp + Retrofit
+    implementation networking.libs
+
+    // Timber
+    implementation utils.libs
+    kapt utils.libs
+
+    // Stetho, LeakCanary
+    debugImplementation debugUtils
+
+    // Unit testing
+    testImplementation baseTest
+}
+
+kapt {
+    javacOptions {
+        // These options are normally set automatically via the Hilt Gradle plugin, but we
+        // set them manually to workaround a bug in the Kotlin 1.5.20
+        option("-Adagger.fastInit=ENABLED")
+        option("-Adagger.hilt.android.internal.disableAndroidSuperclassValidation=true")
+    }
+}
