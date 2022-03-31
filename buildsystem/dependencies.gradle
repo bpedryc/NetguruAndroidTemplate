@@ -99,7 +99,7 @@ ext {
                     "com.github.bumptech.glide:compiler:$glideVersion",
             ],
             test: [
-                    threetenabp: 'org.threeten:threetenbp:1.5.2',
+                    threetenabp: 'org.threeten:threetenbp:1.6.0',
             ]
     ]
 
