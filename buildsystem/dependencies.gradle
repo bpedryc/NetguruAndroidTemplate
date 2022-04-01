@@ -151,7 +151,7 @@ ext {
             "androidx.test:rules:1.4.0",
     ]
 
-    appCenterSdkVersion = '4.4.2'
+    appCenterSdkVersion = '4.4.3'
     libs = [
             preference         : "androidx.preference:preference:$appCompatVersion",
             appCenterCrashes   : "com.microsoft.appcenter:appcenter-crashes:$appCenterSdkVersion",
