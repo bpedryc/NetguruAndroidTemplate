@@ -125,7 +125,7 @@ ext {
             "androidx.lifecycle:lifecycle-reactivestreams-ktx:$lifecycleVersion",
     ]
 
-    coroutinesVersion = '1.6.0'
+    coroutinesVersion = '1.6.1'
     coroutines = [
             libs: [
                     "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion",
