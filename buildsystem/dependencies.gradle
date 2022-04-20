@@ -107,7 +107,7 @@ ext {
     debugUtils = [
             "com.facebook.stetho:stetho:$stethoVersion",
             "com.facebook.stetho:stetho-okhttp3:$stethoVersion",
-            "com.squareup.leakcanary:leakcanary-android:2.8.1",
+            "com.squareup.leakcanary:leakcanary-android:2.9",
     ]
 
     /**
